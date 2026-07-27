@@ -1,0 +1,235 @@
+## Copyright (C) 2026 Advanced Micro Devices, Inc. All rights reserved. ##
+
+
+$id: ./settings_schema.yaml
+$schema: https://json-schema.org/draft/2020-12/schema
+title: Settings Schema
+description: This schema defines the structure of Settings JSON data.
+type: object
+properties:
+  Version:
+    type: integer
+    description: The version of the Settings schema against which this YAML file is
+      written.
+    minimum: 1
+  ComponentName:
+    type: string
+  Tags:
+    type: array
+    items:
+      oneOf:
+        - type: string
+          maxLength: 40
+          description: A tag name.
+        - type: object
+          properties:
+            Name:
+              type: string
+              maxLength: 40
+              description: A tag name
+            oneOf:
+              - BuildTypes:
+                  type: array
+                  items: string
+                  description: Build types are combined by AND logical operator.
+              - OrBuildTypes:
+                  type: array
+                  items: string
+                  description: Build types are combined by OR logical operator.
+          description: A tag guarded behind BuildTypes/OrBuildTypes will be stripped out
+            by code sanitization. Only ASCII is supported.
+    uniqueItems: true
+    description: A top-level list of all tags that could appear in each individual
+      setting's tag list.
+  Enums:
+    type: array
+    items:
+      type: object
+      properties:
+        Name:
+          type: string
+          description: The name of the enum.
+        Values:
+          type: array
+          items:
+            type: object
+            properties:
+              Name:
+                type: string
+                description: The name of the value.
+              Value:
+                type: integer
+                description: Should be unique from other values.
+              oneOf:
+                - BuildTypes:
+                    type: array
+                    items: string
+                    description: Build types are combined by AND logical operator.
+                - OrBuildTypes:
+                    type: array
+                    items: string
+                    description: Build types are combined by OR logical operator.
+              Description:
+                type: string
+                description: The description of the value.
+            required:
+              - Name
+              - Value
+          description: Different fields in an enum struct.
+        Description:
+          type: string
+        SkipGen:
+          type: boolean
+          description: If this flag is true, the enum definition is NOT generated. This is to avoid
+            duplicating enums that have already be manully defined somewhere in the code base.
+        oneOf:
+          - BuildTypes:
+              type: array
+              items: string
+              description: Build types are combined by AND logical operator.
+          - OrBuildTypes:
+              type: array
+              items: string
+              description: Build types are combined by OR logical operator.
+      required:
+        - Name
+        - Values
+        - Description
+    description: Enums to be referenced by individual settings.
+  Settings:
+    type: array
+    items:
+      oneOf:
+        - type: object
+          $ref: '#/$defs/setting'
+        - type: object
+          $ref: '#/$defs/structure'
+
+required:
+  - Version
+  - ComponentName
+  - Settings
+$defs:
+  setting:
+    type: object
+    properties:
+      Name:
+        type: string
+        description: Name is used for generating setting variable name in C++ (by lowercasing
+          the first character). It must start with an alphabetic letter, and only contain
+          alphnumeric characters, plus underscore.
+      Type:
+        type:
+          enum:
+            - bool
+            - int8
+            - uint8
+            - int16
+            - uint16
+            - int32
+            - uint32
+            - int64
+            - uint64
+            - float
+            - string
+            - enum
+        description: The type of this setting.
+      Defaults:
+        type: object
+        properties:
+          Default:
+            type:
+              - string
+              - number
+              - boolean
+            description: Default value. Can be overridden for a specific platform.
+          Windows:
+            type:
+              - string
+              - number
+              - boolean
+            description: Default value for Windows, overridding the value in "default".
+          Linux:
+            type:
+              - string
+              - number
+              - boolean
+            description: Default value for Linux, overridding the value in "default".
+          Android:
+            type:
+              - string
+              - number
+              - boolean
+            description: Default value for Android, overridding the value in "default".
+        required:
+          - Default
+        description: Note, a setting of string type will map to fixed-size array of `char`s
+          in the generated code. The size of this array is a pre-defined constant.
+      Description:
+        type: string
+      oneOf:
+        - BuildTypes:
+            type: array
+            items: string
+            description: Build types are combined by AND logical operator.
+        - OrBuildTypes:
+            type: array
+            items: string
+            description: Build types are combined by OR logical operator.
+      Tags:
+        type: array
+        items:
+          type: string
+          maxLength: 40
+        uniqueItems: true
+        description: Tags help GUI tools with categorization and search. Only ASCII is supported.
+          Must be one of the item from the top-level "Tags" list.
+      Flags:
+        type: object
+        properties:
+          IsHex:
+            type: boolean
+            description: Should this setting be displayed in Hexadecimal. Default
+              to false.
+          IsDir:
+            type: boolean
+            description: Indicate this is a path to a directory. Default to false.
+          IsFile:
+            type: boolean
+            description: Indicate this is a path to a file. Default to false.
+          IsBitmask:
+            type: boolean
+            description: Indicate this is a bitmask. Default to false.
+        description: The flags describing various attributes of this setting.
+      ValidValues:
+        type: string
+        description: One of the names in the top-level Enums list.
+      Scope:
+        type: string
+        description: Scope used for reading values from Windows registry. This is a legacy field that
+          exists for backwards compatibility.
+    required:
+      - Name
+      - Type
+      - Description
+  structure:
+    type: object
+    properties:
+      Name:
+        type: string
+        description: Name of the struct.
+      Structure:
+        type: array
+        item:
+          $ref: '#/$defs/setting'
+      Tags:
+        type: array
+        item:
+          type: string
+          description: Must reference an item from the top-level "Tags" list.
+        description: Tags for all settings inside this "Structure". Can be overridden by individual
+          settings' Tags.
+      Scope: Used for reading values from Windows registry. Can be overridden by individual
+        settings' "Scope" field. This is a legacy field.
+    description: A "Structure" field holds a list of settings. In the generated C++ code, these
+      settings are defined inside a "struct" whose name is the value of the "Name" field.

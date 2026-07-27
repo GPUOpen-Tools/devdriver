@@ -1,0 +1,73 @@
+/* Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved. */
+
+#pragma once
+
+#include <dd_common_api.h>
+#include <dd_allocator_api.h>
+
+namespace DevDriver
+{
+
+class DynamicBuffer
+{
+private:
+    void*       m_pBuf;
+    size_t      m_capacity;
+    size_t      m_size;
+    DDAllocator m_alloc;
+    DD_RESULT   m_error;
+
+public:
+    /// Construct a dynamic buffer using system memory allocator.
+    DynamicBuffer();
+
+    /// Construct a dynamic buffer with a custom allocator.
+    /// @param allocator Custom user-defined allocator.
+    DynamicBuffer(DDAllocator allocator);
+
+    /// Destruct the dynamic buffer and free the underlying memory.
+    ~DynamicBuffer();
+
+    /// Return the error happened during any operation.
+    DD_RESULT Error() const { return m_error; }
+
+    /// Reserve `size` bytes of memory for future copy. Repeatedly calling this function will
+    /// reserve the largest \param size passed. It's illegal to call this function after
+    /// \ref Copy().
+    ///
+    /// @param size Number of bytes to reserve.
+    /// @return DD_RESULT_SUCCESS Reservation succeeded.
+    /// @return DD_RESULT_COMMON_OUT_OF_HEAP_MEMORY Out of memory failure.
+    /// @return DD_RESULT_COMMON_ALREADY_EXISTS Failed to reserve because there is already data
+    /// written to the buffer.
+    DD_RESULT Reserve(size_t size);
+
+    /// Move the write-pointer to the beginning of the buffer, so that the next \ref Copy() writes
+    /// data from the beginning.
+    void Clear();
+
+    /// Return the pointer to the underlying buffer.
+    const void* Data() const;
+
+    /// The size of written data in bytes.
+    size_t Size() const;
+
+    /// The size of underlying buffer in bytes.
+    size_t Capacity() const;
+
+    /// Copy data into the dynamic buffer. Internally, this function only proceeds if no error had
+    /// occurred. This allows a user to call this function consecutively and check error only once
+    /// at the end, as opposed to checking error for every call. This function allocates new memory
+    /// if the existing capacity isn't big enough.
+    ///
+    /// @param pSrcBuf Source buffer to copy data from.
+    /// @param srcSize The size of the source buffer.
+    void Copy(const void* pSrcBuf, size_t srcSize);
+
+    /// Transfer the ownership of the internal buffer to the caller.
+    /// @param[out] pOutBufSize To receive the size of the internal buffer.
+    /// @return The pointer to the internal buffer.
+    void* Transfer(size_t* pOutBufSize);
+};
+
+} // namespace DevDriver
