@@ -1,0 +1,8 @@
+/* Copyright (C) 2021-2024 Advanced Micro Devices, Inc. All rights reserved. */
+
+#pragma once
+
+#include <ddApi.h>
+
+// Static Export Function
+const DDModuleInterface* ${DD_GEN_MODULE_ARGS_MODULE_NAME}QueryModule();

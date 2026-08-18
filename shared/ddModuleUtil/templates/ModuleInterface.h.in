@@ -1,0 +1,75 @@
+/* Copyright (C) 2021-2024 Advanced Micro Devices, Inc. All rights reserved. */
+
+#pragma once
+
+#include <ddModule.h>
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////// DDModule Interface Functions ///////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+DD_RESULT ${DD_GEN_MODULE_ARGS_MODULE_NAME}CreateModuleSystemContext(
+    const DDModuleSystemContextCreateInfo* pCreateInfo,
+    DDModuleSystemContext*                 phSystemContext);
+
+void ${DD_GEN_MODULE_ARGS_MODULE_NAME}DestroyModuleSystemContext(
+    DDModuleSystemContext hSystemContext);
+
+void ${DD_GEN_MODULE_ARGS_MODULE_NAME}HandleSystemEvent(
+    DDModuleSystemContext  hSystemContext,
+    DD_MODULE_SYSTEM_EVENT eventId,
+    const void*            pEventData,
+    size_t                 eventDataSize);
+
+void ${DD_GEN_MODULE_ARGS_MODULE_NAME}QueryModuleClientContextAllocInfo(
+    DDModuleClientContextAllocInfo* pAllocInfo);
+
+DD_RESULT ${DD_GEN_MODULE_ARGS_MODULE_NAME}CreateModuleClientContext(
+    const DDModuleClientContextCreateInfo* pCreateInfo,
+    void*                                  pContextMemory);
+
+void ${DD_GEN_MODULE_ARGS_MODULE_NAME}DestroyModuleClientContext(
+    DDModuleClientContext hClientContext);
+
+void ${DD_GEN_MODULE_ARGS_MODULE_NAME}HandleClientEvent(
+    DDModuleClientContext  hClientContext,
+    DD_MODULE_CLIENT_EVENT eventId,
+    const void*            pEventData,
+    size_t                 eventDataSize);
+
+DD_RESULT ${DD_GEN_MODULE_ARGS_MODULE_NAME}CreateDataContext(
+    const DDModuleDataContextCreateInfo* pCreateInfo,
+    const void*                          pData,
+    size_t                               dataSize,
+    DDModuleDataContext*                 phDataContext);
+
+void ${DD_GEN_MODULE_ARGS_MODULE_NAME}DestroyDataContext(
+    DDModuleDataContext* phDataContext);
+
+DD_RESULT ${DD_GEN_MODULE_ARGS_MODULE_NAME}SerializeDataContext(
+    const DDModuleDataContext hDataContext,
+    void*                     pData,
+    size_t*                   pDataSize);
+
+DD_RESULT ${DD_GEN_MODULE_ARGS_MODULE_NAME}CreateConnectionContext(
+    const DDModuleConnectionContextCreateInfo* pCreateInfo,
+    DDModuleConnectionContext*                 phContext);
+
+void ${DD_GEN_MODULE_ARGS_MODULE_NAME}DestroyConnectionContext(
+    DDModuleConnectionContext hContext);
+
+const DDModuleExtensionInterface* ${DD_GEN_MODULE_ARGS_MODULE_NAME}QueryExtension(
+    DDModuleExtensionId id);
+
+DDModuleNativeApi ${DD_GEN_MODULE_ARGS_MODULE_NAME}QueryNativeApi(
+    void);
+
+DDModuleCommonApi ${DD_GEN_MODULE_ARGS_MODULE_NAME}QueryCommonApi(
+    void);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+/////////////// DDModule Interface /////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+const DDModuleInterface* ${DD_GEN_MODULE_ARGS_MODULE_NAME}QueryModuleInterface(
+    void);

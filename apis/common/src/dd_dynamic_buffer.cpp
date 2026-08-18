@@ -1,0 +1,158 @@
+/* Copyright (C) 2023-2026 Advanced Micro Devices, Inc. All rights reserved. */
+
+#include <dd_dynamic_buffer.h>
+#include <dd_assert.h>
+#include <ddPlatform.h>
+
+#include <cstdlib>
+#include <cstring>
+
+namespace
+{
+
+void* StdRealloc(DDAllocatorInstance* pInstance, void* pMemory, size_t oldSize, size_t newSize)
+{
+    (void)pInstance;
+    (void)oldSize;
+    return std::realloc(pMemory, newSize);
+}
+
+void StdFree(DDAllocatorInstance* pInstance, void* pMemory, size_t size)
+{
+    (void)pInstance;
+    (void)size;
+    std::free(pMemory);
+}
+
+} // anonymous namespace
+
+namespace DevDriver
+{
+
+DynamicBuffer::DynamicBuffer()
+    : m_pBuf{nullptr}
+    , m_capacity{0}
+    , m_size{0}
+    , m_alloc{nullptr, StdRealloc, StdFree}
+    , m_error{DD_RESULT_SUCCESS}
+{
+}
+
+DynamicBuffer::DynamicBuffer(DDAllocator allocator)
+    : m_pBuf{nullptr}
+    , m_capacity{0}
+    , m_size{0}
+    , m_alloc{allocator}
+    , m_error{DD_RESULT_SUCCESS}
+{
+}
+
+DynamicBuffer::~DynamicBuffer()
+{
+    if (m_pBuf != nullptr)
+    {
+        m_alloc.Free(m_alloc.pInstance, m_pBuf, m_capacity);
+    }
+}
+
+DD_RESULT DynamicBuffer::Reserve(size_t reserveSize)
+{
+    DD_RESULT result = DD_RESULT_SUCCESS;
+
+    // Reserve can only happen before any data is written to the buffer.
+    if ((m_size == 0) && (reserveSize > 0))
+    {
+        if (reserveSize > m_capacity)
+        {
+            m_pBuf = m_alloc.Realloc(m_alloc.pInstance, m_pBuf, m_capacity, reserveSize);
+            if (m_pBuf == nullptr)
+            {
+                m_error = DD_RESULT_COMMON_OUT_OF_HEAP_MEMORY;
+                result = m_error;
+            }
+            else
+            {
+                m_capacity = reserveSize;
+            }
+        }
+    }
+    else
+    {
+        result = DD_RESULT_COMMON_ALREADY_EXISTS;
+        // `Copy()` can still happen after this failure, so don't set `m_error`.
+    }
+
+    return result;
+}
+
+void DynamicBuffer::Clear()
+{
+    m_size = 0;
+}
+
+const void* DynamicBuffer::Data() const
+{
+    return m_pBuf;
+}
+
+size_t DynamicBuffer::Size() const
+{
+    return m_size;
+}
+
+size_t DynamicBuffer::Capacity() const
+{
+    return m_capacity;
+}
+
+void DynamicBuffer::Copy(const void* pSrcBuf, size_t srcSize)
+{
+    if (m_error == DD_RESULT_SUCCESS)
+    {
+        if (srcSize > 0)
+        {
+            DD_ASSERT(m_capacity >= m_size);
+
+            uint8_t* pDestBuf = static_cast<uint8_t*>(m_pBuf) + m_size;
+
+            if ((m_capacity - m_size) < srcSize)
+            {
+                size_t newCapacity = (srcSize > m_capacity) ? (m_capacity + srcSize) : (m_capacity * 2);
+                DD_ASSERT(newCapacity > m_capacity);
+
+                m_pBuf = (uint8_t*)m_alloc.Realloc(m_alloc.pInstance, m_pBuf, m_capacity, newCapacity);
+                if (m_pBuf == nullptr)
+                {
+                    m_error = DD_RESULT_COMMON_OUT_OF_HEAP_MEMORY;
+                }
+                else
+                {
+                    pDestBuf   = static_cast<uint8_t*>(m_pBuf) + m_size;
+                    m_capacity = newCapacity;
+                }
+
+            }
+
+            if (m_error == DD_RESULT_SUCCESS)
+            {
+                Platform::Memcpy_s(pDestBuf, m_capacity - m_size, pSrcBuf, srcSize);
+                m_size += srcSize;
+            }
+        }
+    }
+}
+
+void* DynamicBuffer::Transfer(size_t* pOutBufSize)
+{
+    void* pBuf   = m_pBuf;
+    *pOutBufSize = m_capacity;
+
+    m_pBuf     = nullptr;
+    m_size     = 0;
+    m_capacity = 0;
+    m_error    = DD_RESULT_SUCCESS;
+
+    return pBuf;
+}
+
+} // namespace DevDriver
