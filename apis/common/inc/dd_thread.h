@@ -1,0 +1,91 @@
+/* Copyright (C) 2024-2026 Advanced Micro Devices, Inc. All rights reserved. */
+
+#pragma once
+
+#include <dd_common_api.h>
+#include <dd_assert.h>
+#include <cstdint>
+
+namespace DevDriver
+{
+
+typedef void (*ThreadFunction)(void* pUserdata);
+
+struct ThreadIdentifier;
+
+class Thread
+{
+private:
+    ThreadIdentifier* m_pThreadId;
+
+    ThreadFunction m_pThreadFn; // user passed function to be executed
+    void*          m_pUserdata; // passed to `m_pThreadFn`
+
+public:
+    Thread()
+        : m_pThreadId {nullptr}
+        , m_pThreadFn {nullptr}
+        , m_pUserdata {nullptr}
+    {}
+
+    Thread(Thread&& other) noexcept
+        : m_pThreadId {other.m_pThreadId}
+        , m_pThreadFn {other.m_pThreadFn}
+        , m_pUserdata {other.m_pUserdata}
+    {
+        other.m_pThreadId = nullptr;
+        other.m_pThreadFn = nullptr;
+        other.m_pUserdata = nullptr;
+    }
+
+    void operator=(Thread&& other) noexcept
+    {
+        m_pThreadId = other.m_pThreadId;
+        m_pThreadFn = other.m_pThreadFn;
+        m_pUserdata = other.m_pUserdata;
+
+        other.m_pThreadId = nullptr;
+        other.m_pThreadFn = nullptr;
+        other.m_pUserdata = nullptr;
+    }
+
+    ~Thread();
+
+    /// Start executing a thread.
+    ///
+    /// @param[in] pThreadFn Function to start the thread with.
+    /// @param[in] pUserdata Argument passed to \param pThreadFn when invoked.
+    /// @return DD_RESULT_COMMON_INVALID_PARAMETER if \param pThreadFn is nullptr.
+    /// @return other errors.
+    DD_RESULT Start(ThreadFunction pThreadFn, void* pUserdata);
+
+    /// Blocks indefinitely until the thread terminates.
+    ///
+    /// @return DD_RESULT_SUCCESS the thread terminated successfully. Note, this return value does NOT necessarily mean
+    /// the thread function ran successfully.
+    /// @return other errors.
+    DD_RESULT Join();
+
+    /// Set debug name of the thread.
+    ///
+    /// @param[in] pName Pointer to a null-terminated string. On Linux \param pName is truncated to be maximumly 16
+    /// bytes including null-terminator.
+    DD_RESULT SetDebugName(const char* pName);
+
+private:
+    // ThreadFnShim is an extra layer of indirection to converge different thread function signatures on various
+    // platforms.
+#if defined(DD_TARGET_PLATFORM_WINDOWS)
+    static uint32_t __stdcall ThreadFnShim(void* pThread);
+#elif defined(DD_TARGET_PLATFORM_LINUX)
+    static void* ThreadFnShim(void* pThread);
+#else
+#error Unsupported platform
+#endif
+
+    Thread(const Thread&) = delete;
+    Thread& operator=(const Thread&) = delete;
+};
+
+} // namespace DevDriver
+
